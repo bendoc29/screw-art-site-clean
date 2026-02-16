@@ -843,7 +843,7 @@ function PipelineTab({ leads, allLeads, followUpsDue, selectedId, setSelectedId,
       <div>
         {selectedLead ? (
           <LeadDetail lead={selectedLead} updateLead={updateLead} showToast={showToast}
-            allLeads={allLeads} updateAndSave={updateAndSave} apiKey={apiKey} />
+            allLeads={allLeads} updateAndSave={updateAndSave} />
         ) : (
           <div className="detail-panel" style={{display:"flex",alignItems:"center",justifyContent:"center"}}>
             <div className="empty">
