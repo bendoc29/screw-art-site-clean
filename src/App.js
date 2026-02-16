@@ -444,6 +444,24 @@ function copy(text, cb) {
   navigator.clipboard?.writeText(text).then(() => cb?.());
 }
 
+function needsFollowUp(lead) {
+  // Uses either lastContact or (fallback) addedAt
+  const base = lead.lastContact || lead.addedAt;
+  if (!base) return false;
+
+  const days = (Date.now() - new Date(base).getTime()) / (1000 * 60 * 60 * 24);
+
+  // If they've replied and are warm -> follow up quicker
+  if (lead.stage === "warm" && days >= 2) return true;
+
+  // If messaged but no reply -> follow up after 3 days
+  const messaged = lead.steps?.messaged || lead.stage === "messaged";
+  const replied = lead.steps?.replied || lead.stage === "replied" || lead.reply?.trim();
+  if (messaged && !replied && days >= 3) return true;
+
+  return false;
+}
+
 // ─── AI CALLS ─────────────────────────────────────────────────────────────────
 
 async function callServer(path, payload) {
@@ -524,6 +542,52 @@ export default function App() {
   }, []);
 
   const showToast = (msg) => setToast(msg);
+  const importCSV = useCallback((file) => {
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = String(reader.result || "");
+    const lines = text.split(/\r?\n/).filter(Boolean);
+
+    // Expect headers like: name,role,company,platform,notes,profileUrl
+    const header = lines.shift()?.split(",").map(h => h.trim().toLowerCase()) || [];
+    const idx = (key) => header.indexOf(key);
+
+    const newLeads = lines.map((line) => {
+      const cols = line.split(",").map(c => c.trim());
+      const name = cols[idx("name")] || cols[0] || "Unknown";
+      const role = cols[idx("role")] || cols[1] || "";
+      const company = cols[idx("company")] || cols[2] || "";
+      const platform = (cols[idx("platform")] || cols[3] || "LinkedIn") || "LinkedIn";
+      const notes = cols[idx("notes")] || cols[4] || "";
+      const profileUrl = cols[idx("profileurl")] || cols[idx("url")] || cols[5] || "";
+
+      return {
+        id: `lead-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name,
+        role,
+        company,
+        platform: platform.includes("insta") ? "Instagram" : "LinkedIn",
+        notes,
+        profileUrl,
+        stage: "new",
+        outreachMessage: "",
+        reply: "",
+        aiAnalysis: null,
+        addedAt: Date.now(),
+        lastContact: null,
+        steps: { invited: false, accepted: false, messaged: false, replied: false },
+      };
+    });
+
+    updateAndSave([...newLeads, ...leads]);
+    showToast(`Imported ${newLeads.length} leads`);
+  };
+
+  reader.readAsText(file);
+}, [leads, updateAndSave]);
+
   const selectedLead = leads.find(l => l.id === selectedId);
 
   const stats = {
@@ -538,6 +602,8 @@ export default function App() {
     if (platformFilter !== "all" && l.platform !== platformFilter) return false;
     return true;
   });
+
+  const followUpsDue = leads.filter(needsFollowUp);
 
   const handleSaveApiKey = (key) => {
     setApiKey(key);
@@ -593,7 +659,8 @@ export default function App() {
 
           {tab === "pipeline" && (
             <PipelineTab
-              leads={filteredLeads} allLeads={leads} selectedId={selectedId}
+              leads={filteredLeads} allLeads={leads} followUpsDue={followUpsDue}
+              selectedId={selectedId} importCSV={importCSV}
               setSelectedId={setSelectedId} selectedLead={selectedLead}
               stageFilter={stageFilter} setStageFilter={setStageFilter}
               platformFilter={platformFilter} setPlatformFilter={setPlatformFilter}
@@ -629,7 +696,7 @@ export default function App() {
 
 // ─── PIPELINE TAB ─────────────────────────────────────────────────────────────
 
-function PipelineTab({ leads, allLeads, selectedId, setSelectedId, selectedLead, stageFilter, setStageFilter, platformFilter, setPlatformFilter, updateLead, updateAndSave, showToast, setShowAddModal, apiKey }) {
+function PipelineTab({ leads, allLeads, followUpsDue, selectedId, setSelectedId, selectedLead, stageFilter, setStageFilter, platformFilter, setPlatformFilter, updateLead, updateAndSave, showToast, setShowAddModal }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 20 }}>
       <div>
@@ -643,8 +710,50 @@ function PipelineTab({ leads, allLeads, selectedId, setSelectedId, selectedLead,
             <button className={`filter-btn ${platformFilter==="LinkedIn"?"active":""}`} onClick={() => setPlatformFilter("LinkedIn")}>🔗 LI</button>
             <button className={`filter-btn ${platformFilter==="Instagram"?"active":""}`} onClick={() => setPlatformFilter("Instagram")}>📷 IG</button>
           </div>
-          <button className="btn btn-gold" onClick={() => setShowAddModal(true)}>+ Add Lead</button>
+          <input
+            id="csvImport"
+            type="file"
+            accept=".csv"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) importCSV(f);
+              e.target.value = "";
+            }}
+          />
+
+          <button className="btn btn-outline" onClick={() => document.getElementById("csvImport").click()}>
+            ⤓ Import CSV
+          </button>
+
+          <button className="btn btn-gold" onClick={() => setShowAddModal(true)}>
+            + Add Lead
+          </button>
+
         </div>
+
+        {followUpsDue?.length ? (
+          <>
+            <div className="card" style={{ marginBottom: 14 }}>
+              <div className="card-title"><span>🔥</span> Follow-ups Due</div>
+              {followUpsDue.slice(0, 8).map(lead => (
+                <LeadCard
+                  key={`fu-${lead.id}`}
+                  lead={lead}
+                  selected={selectedId === lead.id}
+                  onClick={() => setSelectedId(lead.id === selectedId ? null : lead.id)}
+                  updateLead={updateLead}
+                  showToast={showToast}
+                />
+              ))}
+              {followUpsDue.length > 8 ? (
+                <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 6 }}>
+                  + {followUpsDue.length - 8} more due…
+                </div>
+              ) : null}
+            </div>
+          </>
+        ) : null}
 
         {leads.length === 0 ? (
           <div className="empty"><div className="empty-icon">◈</div><div className="empty-text">No leads match this filter.</div></div>
@@ -681,6 +790,10 @@ function LeadCard({ lead, selected, onClick, updateLead, showToast }) {
     e.stopPropagation();
     const newSteps = { ...steps, [stepKey]: !steps[stepKey] };
     const patch = { steps: newSteps };
+    // If we just marked "messaged" as true, set lastContact timestamp
+    if (stepKey === "messaged" && !steps[stepKey]) {
+      patch.lastContact = new Date().toISOString();
+    }
     if (!steps[stepKey] && nextStage) patch.stage = nextStage;
     updateLead(lead.id, patch);
     if (!steps[stepKey]) showToast(`${stepKey.charAt(0).toUpperCase()+stepKey.slice(1)} marked ✓`);
@@ -752,7 +865,7 @@ function LeadDetail({ lead, updateLead, showToast, allLeads, updateAndSave, apiK
   };
 
   const handleSelectMessage = (text) => {
-    updateLead(lead.id, { outreachMessage: text });
+    updateLead(lead.id, { outreachMessage: text, lastContact: new Date().toISOString() });
     showToast("Message saved");
     setMessages(null);
   };
