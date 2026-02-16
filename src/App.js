@@ -566,7 +566,6 @@ export default function App() {
   const [stageFilter, setStageFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showApiModal, setShowApiModal] = useState(false);
   
 
   const updateAndSave = useCallback((updated) => {
@@ -657,15 +656,6 @@ export default function App() {
           return true;
         });
 
-
-
-  const handleSaveApiKey = (key) => {
-    setApiKey(key);
-    saveApiKey(key);
-    setShowApiModal(false);
-    showToast("API key saved");
-  };
-
   return (
     <>
       <style>{globalStyles}</style>
@@ -699,14 +689,17 @@ export default function App() {
           ))}
         </nav>
 
-        <div className="main">
-          {!apiKey && (
-            <div className="api-key-banner">
-              <span style={{fontSize:20}}>⚙</span>
-              <p><strong style={{color:"var(--gold)"}}>Add your Anthropic API key</strong> to unlock AI message generation and reply analysis. Click the button in the top right, or <button onClick={()=>setShowApiModal(true)} style={{background:"none",border:"none",color:"var(--gold)",cursor:"pointer",fontFamily:"var(--font-mono)",fontSize:11,textDecoration:"underline"}}>click here</button>.</p>
-              <button className="btn btn-gold btn-sm" onClick={() => setShowApiModal(true)}>Add API Key →</button>
-            </div>
-          )}
+        <div className="api-key-banner" style={{
+          background: "rgba(0,255,170,0.06)",
+          border: "1px solid rgba(0,255,170,0.25)",
+          color: "var(--text2)"
+        }}>
+          <span style={{fontSize:20}}>🤖</span>
+          <p>
+            <strong style={{color:"var(--green)"}}>AI system active.</strong>  
+            Outreach generation, reply analysis, and follow-ups are running securely on the server.
+          </p>
+        </div>
 
           {tab === "pipeline" && (
             <PipelineTab
@@ -717,13 +710,11 @@ export default function App() {
               platformFilter={platformFilter} setPlatformFilter={setPlatformFilter}
               updateLead={updateLead} updateAndSave={updateAndSave}
               showToast={showToast} setShowAddModal={setShowAddModal}
-              apiKey={apiKey}
             />
           )}
           {tab === "finder" && <FinderTab showToast={showToast} />}
           {tab === "analytics" && <AnalyticsTab leads={leads} />}
         </div>
-      </div>
 
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
       {showAddModal && (
@@ -737,9 +728,6 @@ export default function App() {
             showToast("Lead added");
           }}
         />
-      )}
-      {showApiModal && (
-        <ApiKeyModal currentKey={apiKey} onSave={handleSaveApiKey} onClose={() => setShowApiModal(false)} />
       )}
     </>
   );
@@ -1177,37 +1165,6 @@ function AddLeadModal({ onClose, onSave }) {
         <div className="modal-footer">
           <button className="btn btn-outline" onClick={onClose}>Cancel</button>
           <button className="btn btn-gold" onClick={() => onSave({ id:Date.now().toString(), ...form, stage:"invited", steps:{invited:false,accepted:false,messaged:false,replied:false}, outreachMessage:"", reply:"", aiAnalysis:null, addedAt:Date.now() })} disabled={!valid}>Add to Pipeline →</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── API KEY MODAL ────────────────────────────────────────────────────────────
-
-function ApiKeyModal({ currentKey, onSave, onClose }) {
-  const [key, setKey] = useState(currentKey);
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e=>e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title">ANTHROPIC API KEY</div>
-          <button className="btn btn-ghost" onClick={onClose}>✕</button>
-        </div>
-        <div className="modal-body">
-          <p style={{fontSize:12,color:"var(--text2)",marginBottom:16,lineHeight:1.7}}>
-            Your API key is needed to power the AI message generation and reply analysis. It's stored only in your browser — never sent anywhere except Anthropic's servers.
-          </p>
-          <p style={{fontSize:11,color:"var(--text3)",marginBottom:16,lineHeight:1.6}}>
-            Get your key at <strong style={{color:"var(--gold)"}}>console.anthropic.com</strong> → API Keys → Create Key.
-          </p>
-          <label className="label">API Key</label>
-          <input className="input" type="password" placeholder="sk-ant-api03-..." value={key} onChange={e=>setKey(e.target.value)} />
-          <p style={{fontSize:10,color:"var(--text3)",marginTop:8}}>Starts with "sk-ant-"</p>
-        </div>
-        <div className="modal-footer">
-          <button className="btn btn-outline" onClick={onClose}>Cancel</button>
-          <button className="btn btn-gold" onClick={() => onSave(key)} disabled={!key.trim()}>Save Key →</button>
         </div>
       </div>
     </div>
