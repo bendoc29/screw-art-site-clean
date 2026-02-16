@@ -444,6 +444,25 @@ function copy(text, cb) {
   navigator.clipboard?.writeText(text).then(() => cb?.());
 }
 
+function dedupeLeads(leads) {
+  const seen = new Set();
+  const out = [];
+
+  for (const l of leads) {
+    const url = (l.profileUrl || "").trim().toLowerCase();
+    const name = (l.name || "").trim().toLowerCase();
+    const company = (l.company || "").trim().toLowerCase();
+
+    const key = url ? `url:${url}` : `nc:${name}|${company}`;
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(l);
+    }
+  }
+  return out;
+}
+
 function needsFollowUp(lead) {
   // Uses either lastContact or (fallback) addedAt
   const base = lead.lastContact || lead.addedAt;
@@ -581,7 +600,7 @@ export default function App() {
       };
     });
 
-    updateAndSave([...newLeads, ...leads]);
+    updateAndSave(dedupeLeads([...newLeads, ...leads]));
     showToast(`Imported ${newLeads.length} leads`);
   };
 
@@ -721,6 +740,13 @@ function PipelineTab({ leads, allLeads, followUpsDue, selectedId, setSelectedId,
               e.target.value = "";
             }}
           />
+
+          <button className="btn btn-outline" onClick={() => {
+            updateAndSave(dedupeLeads(allLeads));
+            showToast("Removed duplicates");
+          }}>
+            ✨ Dedupe
+          </button>
 
           <button className="btn btn-outline" onClick={() => document.getElementById("csvImport").click()}>
             ⤓ Import CSV
