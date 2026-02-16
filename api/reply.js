@@ -1,8 +1,8 @@
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return res.status(500).json({ error: "Missing ANTHROPIC_API_KEY on server" });
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return res.status(500).json({ error: "Missing OPENAI_API_KEY on server" });
 
   try {
     const { lead, theirReply, yourLastMessage } = req.body || {};
@@ -20,7 +20,7 @@ ${yourLastMessage || ""}
 Their reply:
 ${theirReply || ""}
 
-Return JSON:
+Return JSON exactly:
 {
   "temperature": "warm" | "cold" | "neutral",
   "intent": "curious" | "price" | "examples" | "timing" | "not_interested" | "other",
@@ -31,28 +31,30 @@ Return JSON:
 Rules:
 - Keep best_reply under 90 words
 - No pressure, premium tone
-- If they ask price: suggest a range and offer to show examples + get photo/size
+- If they ask price: give a range (£3k–£6k) and offer to show examples + ask photo/size
 `;
 
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
+    const r = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
+        "Authorization": `Bearer ${key}`,
       },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-latest",
-        max_tokens: 450,
-        temperature: 0.4,
-        messages: [{ role: "user", content: prompt }],
+        model: "gpt-4.1-mini",
+        input: prompt,
+        max_output_tokens: 600,
       }),
     });
 
     const data = await r.json();
-    if (!r.ok) return res.status(r.status).json({ error: data?.error?.message || "Anthropic error", raw: data });
+    if (!r.ok) return res.status(r.status).json({ error: data?.error?.message || "OpenAI error", raw: data });
 
-    const text = data?.content?.[0]?.text || "";
+    const text =
+      data?.output_text ||
+      data?.output?.map(o => o?.content?.map(c => c?.text).join("")).join("") ||
+      "";
+
     let parsed;
     try { parsed = JSON.parse(text); }
     catch {
