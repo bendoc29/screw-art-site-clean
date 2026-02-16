@@ -616,13 +616,18 @@ export default function App() {
     won: leads.filter(l => l.stage === "won").length,
   };
 
-  const filteredLeads = leads.filter(l => {
-    if (stageFilter !== "all" && l.stage !== stageFilter) return false;
-    if (platformFilter !== "all" && l.platform !== platformFilter) return false;
-    return true;
-  });
-
   const followUpsDue = leads.filter(needsFollowUp);
+
+  const filteredLeads =
+    stageFilter === "followups"
+      ? followUpsDue
+      : leads.filter(l => {
+          if (stageFilter !== "all" && l.stage !== stageFilter) return false;
+          if (platformFilter !== "all" && l.platform !== platformFilter) return false;
+          return true;
+        });
+
+
 
   const handleSaveApiKey = (key) => {
     setApiKey(key);
@@ -726,6 +731,13 @@ function PipelineTab({ leads, allLeads, followUpsDue, selectedId, setSelectedId,
           ))}
           <div style={{marginLeft:"auto",display:"flex",gap:8}}>
             <button className={`filter-btn ${platformFilter==="all"?"active":""}`} onClick={() => setPlatformFilter("all")}>All</button>
+            <button
+              className={`chip ${stageFilter === "followups" ? "active" : ""}`}
+              onClick={() => setStageFilter("followups")}
+            >
+              ⏰ Follow-ups
+            </button>
+
             <button className={`filter-btn ${platformFilter==="LinkedIn"?"active":""}`} onClick={() => setPlatformFilter("LinkedIn")}>🔗 LI</button>
             <button className={`filter-btn ${platformFilter==="Instagram"?"active":""}`} onClick={() => setPlatformFilter("Instagram")}>📷 IG</button>
           </div>
