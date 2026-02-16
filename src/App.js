@@ -622,8 +622,13 @@ export default function App() {
     stageFilter === "followups"
       ? followUpsDue
       : leads.filter(l => {
+
+          // ❗ hide follow-up leads from ALL view
+          if (stageFilter === "all" && needsFollowUp(l)) return false;
+
           if (stageFilter !== "all" && l.stage !== stageFilter) return false;
           if (platformFilter !== "all" && l.platform !== platformFilter) return false;
+
           return true;
         });
 
