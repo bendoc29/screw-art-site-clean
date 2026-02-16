@@ -8,8 +8,12 @@ export default async function handler(req, res) {
     const { lead, theirReply, yourLastMessage } = req.body || {};
 
     const prompt = `
-You are a high-ticket closer selling bespoke screw-art portrait commissions (£3k–£6k).
-Classify the reply and draft the best next message.
+You are managing bespoke £3k–£6k screw-built portrait commissions for founders and business owners.
+
+Positioning rules:
+- Initially you present the pieces as commissioned creations.
+- Introduce the artist only once curiosity or trust is forming, or if asked.
+- Never sound like a salesperson.
 
 Lead:
 ${JSON.stringify(lead || {}, null, 2)}
@@ -20,19 +24,35 @@ ${yourLastMessage || ""}
 Their reply:
 ${theirReply || ""}
 
-Return JSON exactly:
-{
-  "temperature": "warm" | "cold" | "neutral",
-  "intent": "curious" | "price" | "examples" | "timing" | "not_interested" | "other",
-  "best_reply": "string",
-  "follow_up_if_no_reply_3_days": "string"
-}
+Tasks:
+
+1) Classify temperature:
+"warm", "neutral", or "cold"
+
+2) Identify intent:
+curious, price, examples, timing, not_interested, other
+
+3) Write the strongest next message to move toward commission.
 
 Rules:
-- Keep best_reply under 90 words
-- No pressure, premium tone
-- If they ask price: give a range (£3k–£6k) and offer to show examples + ask photo/size
+- Calm, premium tone
+- 60–120 words
+- No pressure
+- Frame price as custom if asked (£3k–£6k)
+- Guide toward showing examples and discussing scale
+
+Also write:
+- A soft 3-day follow-up (30–60 words)
+
+Return JSON only:
+{
+  "temperature": "...",
+  "intent": "...",
+  "best_reply": "...",
+  "follow_up_if_no_reply_3_days": "..."
+}
 `;
+
 
     const r = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",

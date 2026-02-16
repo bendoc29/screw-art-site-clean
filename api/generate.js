@@ -8,21 +8,43 @@ export default async function handler(req, res) {
     const { lead, context } = req.body || {};
 
     const prompt = `
-You are a premium outbound copywriter selling £3k–£6k bespoke screw-art portrait commissions.
-Write 3 short LinkedIn DMs (curiosity-first, NOT salesy) tailored to this lead.
+You are crafting premium outreach messages for bespoke £3,000–£6,000 screw-built portrait commissions.
 
-Lead:
+What is being sold:
+One-off handcrafted portrait pieces built entirely from thousands of individual screws — typically commissioned by founders, CEOs, and business owners to mark milestones, achievements, or personal legacy moments.
+
+IMPORTANT POSITIONING:
+- Do NOT mention an artist or that you work with anyone.
+- Position it as: “I’ve been creating/commissioning bespoke portrait pieces…”
+- Reveal the artist only later after interest is shown.
+- Tone: sharp, confident, intriguing — never salesy.
+
+Lead details:
 ${JSON.stringify(lead || {}, null, 2)}
 
-Context / trigger:
+Extra context:
 ${context || "None"}
 
+Write 3 LinkedIn DM openers:
+
 Rules:
-- 40–70 words max each
-- No pricing mention
-- One question at the end
-- Sound human, UK/Ireland tone
-Return JSON exactly: { "messages": ["...", "...", "..."] }
+- 35–75 words
+- Hook-first (no generic compliments)
+- Curiosity-driven
+- No pricing
+- No hard sell
+- End with a soft question
+- Tailored to founder/owner psychology
+- Sound human and premium
+
+Return JSON only:
+{
+  "messages": [
+    {"label": "Curiosity", "text": "..."},
+    {"label": "Milestone", "text": "..."},
+    {"label": "Legacy", "text": "..."}
+  ]
+}
 `;
 
     const r = await fetch("https://api.openai.com/v1/responses", {

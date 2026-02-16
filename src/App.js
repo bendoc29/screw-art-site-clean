@@ -567,7 +567,7 @@ export default function App() {
   const [platformFilter, setPlatformFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showApiModal, setShowApiModal] = useState(false);
-  const [apiKey, setApiKey] = useState(() => loadApiKey());
+  
 
   const updateAndSave = useCallback((updated) => {
     setLeads(updated);
