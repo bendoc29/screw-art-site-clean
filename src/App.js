@@ -463,6 +463,25 @@ function dedupeLeads(leads) {
   return out;
 }
 
+function daysSince(dateLike) {
+  if (!dateLike) return Infinity;
+  const t = new Date(dateLike).getTime();
+  if (Number.isNaN(t)) return Infinity;
+  return (Date.now() - t) / (1000 * 60 * 60 * 24);
+}
+
+function followUpPriorityScore(lead) {
+  // Higher = more urgent
+  const base = lead.lastContact || lead.addedAt;
+  const d = daysSince(base);
+
+  // Warm leads get priority boost
+  const warmBoost = lead.stage === "warm" ? 100 : 0;
+
+  // The longer it’s been, the more urgent
+  return warmBoost + Math.floor(d);
+}
+
 function needsFollowUp(lead) {
   // Uses either lastContact or (fallback) addedAt
   const base = lead.lastContact || lead.addedAt;
@@ -477,6 +496,9 @@ function needsFollowUp(lead) {
   const messaged = lead.steps?.messaged || lead.stage === "messaged";
   const replied = lead.steps?.replied || lead.stage === "replied" || lead.reply?.trim();
   if (messaged && !replied && days >= 3) return true;
+
+    // Snoozed leads should not appear in follow-ups until snoozeUntil
+  if (lead.snoozeUntil && Date.now() < new Date(lead.snoozeUntil).getTime()) return false;
 
   return false;
 }
@@ -616,7 +638,10 @@ export default function App() {
     won: leads.filter(l => l.stage === "won").length,
   };
 
-  const followUpsDue = leads.filter(needsFollowUp);
+  const followUpsDue = leads
+  .filter(needsFollowUp)
+  .sort((a, b) => followUpPriorityScore(b) - followUpPriorityScore(a));
+
 
   const filteredLeads =
     stageFilter === "followups"
@@ -658,9 +683,6 @@ export default function App() {
             <div className="hstat"><div className="hstat-val">{stats.messaged}</div><div className="hstat-label">Messaged</div></div>
             <div className="hstat"><div className="hstat-val" style={{color:"#e85d3a"}}>{stats.warm}</div><div className="hstat-label">🔥 Warm</div></div>
             <div className="hstat"><div className="hstat-val" style={{color:"#4caf6a"}}>{stats.won}</div><div className="hstat-label">Won</div></div>
-            <button className="btn btn-outline btn-sm" onClick={() => setShowApiModal(true)} style={{marginLeft:8}}>
-              {apiKey ? "⚙ API Key ✓" : "⚙ Set API Key"}
-            </button>
           </div>
         </header>
 
@@ -741,7 +763,19 @@ function PipelineTab({ leads, allLeads, followUpsDue, selectedId, setSelectedId,
               onClick={() => setStageFilter("followups")}
             >
               ⏰ Follow-ups
+              {followUpsDue.length ? (
+                <span style={{
+                  marginLeft: 8,
+                  fontSize: 12,
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  background: "rgba(255,255,255,0.12)"
+                }}>
+                  {followUpsDue.length}
+                </span>
+              ) : null}
             </button>
+
 
             <button className={`filter-btn ${platformFilter==="LinkedIn"?"active":""}`} onClick={() => setPlatformFilter("LinkedIn")}>🔗 LI</button>
             <button className={`filter-btn ${platformFilter==="Instagram"?"active":""}`} onClick={() => setPlatformFilter("Instagram")}>📷 IG</button>
@@ -879,7 +913,7 @@ function StepTick({ label, done, onClick, disabled }) {
 
 // ─── LEAD DETAIL ──────────────────────────────────────────────────────────────
 
-function LeadDetail({ lead, updateLead, showToast, allLeads, updateAndSave, apiKey }) {
+function LeadDetail({ lead, updateLead, showToast, allLeads, updateAndSave, }) {
   const [genLoading, setGenLoading] = useState(false);
   const [messages, setMessages] = useState(null);
   const [replyText, setReplyText] = useState(lead.reply || "");
@@ -896,29 +930,51 @@ function LeadDetail({ lead, updateLead, showToast, allLeads, updateAndSave, apiK
   }, [lead.id]);
 
   const handleGenerateOutreach = async () => {
-    if (!apiKey) { setGenError("Add your API key first (top right button)."); return; }
     setGenLoading(true); setMessages(null); setGenError("");
     try {
-      const msgs = await generateOutreachMessage(lead, apiKey);
+      const msgs = await generateOutreachMessage(lead); // ✅ server-side
       setMessages(msgs);
     } catch (e) {
-      setGenError("AI error: " + e.message + ". Check your API key is correct.");
+      setGenError("AI error: " + e.message);
     }
     setGenLoading(false);
   };
+
 
   const handleSelectMessage = (text) => {
     updateLead(lead.id, { outreachMessage: text, lastContact: new Date().toISOString() });
     showToast("Message saved");
     setMessages(null);
   };
+  const generateFollowUp = async () => {
+    try {
+      const r = await fetch("/api/followup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lead }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.error || "Failed to generate follow-up");
+
+      // Save as outreachMessage so it’s ready to copy/paste
+      updateLead(lead.id, { outreachMessage: data.text || "" });
+      showToast("Follow-up generated");
+    } catch (e) {
+      showToast(`AI error: ${e.message}`);
+    }
+  };
+
+  const snoozeLead = (days) => {
+    const until = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+    updateLead(lead.id, { snoozeUntil: until });
+    showToast(`Snoozed for ${days} days`);
+  };
 
   const handleAnalyseReply = async () => {
-    if (!apiKey) { setGenError("Add your API key first."); return; }
     if (!replyText.trim()) return;
     setAnalyseLoading(true); setGenError("");
     try {
-      const result = await analyseReply(lead, replyText, apiKey);
+      const result = await analyseReply(lead, replyText); // ✅ server-side
       setAnalysis(result);
       updateLead(lead.id, { reply: replyText, aiAnalysis: result, stage: result.classification, steps: { ...lead.steps, replied: true } });
     } catch (e) {
@@ -926,6 +982,7 @@ function LeadDetail({ lead, updateLead, showToast, allLeads, updateAndSave, apiK
     }
     setAnalyseLoading(false);
   };
+
 
   const handleClose = (outcome) => {
     updateLead(lead.id, { stage: outcome });
@@ -965,10 +1022,25 @@ function LeadDetail({ lead, updateLead, showToast, allLeads, updateAndSave, apiK
           <div className="panel-section-title">Step 1 — Outreach Message</div>
           {lead.outreachMessage ? (
             <>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+                <button className="btn btn-outline btn-sm" onClick={generateFollowUp}>
+                  🤖 Generate Follow-up
+                </button>
+
+                <button className="btn btn-outline btn-sm" onClick={() => snoozeLead(3)}>
+                  😴 Snooze 3d
+                </button>
+
+                <button className="btn btn-outline btn-sm" onClick={() => snoozeLead(7)}>
+                  😴 Snooze 7d
+                </button>
+              </div>
+
               <div className="msg-box" style={{marginBottom:10}}>
                 <button className="copy-btn" onClick={() => copy(lead.outreachMessage, () => showToast("Copied!"))}>COPY</button>
                 {lead.outreachMessage}
               </div>
+
               <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                 <button className="btn btn-outline btn-sm" onClick={handleGenerateOutreach}>↺ Regenerate</button>
                 {!lead.steps?.messaged ? (
