@@ -446,58 +446,56 @@ function copy(text, cb) {
 
 // ─── AI CALLS ─────────────────────────────────────────────────────────────────
 
-async function callClaude(messages, systemPrompt, apiKey) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+async function callServer(path, payload) {
+  const response = await fetch(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: "claude-opus-4-5-20251101", max_tokens: 1000, system: systemPrompt, messages }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
-  if (!response.ok) throw new Error(`API error ${response.status}`);
-  const data = await response.json();
-  return data.content?.map(b => b.text || "").join("") || "";
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error || `API error ${response.status}`);
+  return data;
 }
 
-async function generateOutreachMessage(lead, apiKey) {
-  const system = `You are an outreach strategist for a luxury bespoke portrait art business. The portraits are hand-crafted entirely from individual screws — creating stunning, one-of-a-kind artworks from a person's photo. Sold as personal legacy pieces, milestone gifts, and statement pieces for offices. Price: £3,000–£6,000. Tone: punchy, curiosity-driven, hook-first. Short, sharp. No fluff. No generic compliments. Written by a sharp human, not a bot.`;
-  const prompt = `Write 3 distinct cold outreach messages for this lead. Each 3–5 sentences max. Hook-first, curiosity-driven. Reference their role/company naturally. End with a soft open question, not a hard sell.
 
-Lead: ${lead.name}, ${lead.role} at ${lead.company} (${lead.platform})${lead.notes ? `\nNotes: ${lead.notes}` : ""}
+async function generateOutreachMessage(lead) {
+  const data = await callServer("/api/generate", {
+    lead,
+    context: lead?.notes || "",
+  });
 
-Return ONLY valid JSON (no markdown):
-{"messages": [
-  {"label": "Hook: Curiosity", "text": "..."},
-  {"label": "Hook: Achievement", "text": "..."},
-  {"label": "Hook: Legacy", "text": "..."}
-]}`;
-  const raw = await callClaude([{ role: "user", content: prompt }], system, apiKey);
-  const clean = raw.replace(/```json|```/g, "").trim();
-  return JSON.parse(clean).messages;
+  // Your server returns { messages: [...] } OR { messages: ["..",".."] }
+  const msgs = data.messages || [];
+  // Normalize into your UI’s expected shape if needed
+  return msgs.map((m, i) =>
+    typeof m === "string"
+      ? { label: `Option ${i + 1}`, text: m }
+      : m
+  );
 }
 
-async function analyseReply(lead, reply, apiKey) {
-  const system = `You are a sales analyst for a luxury bespoke screw-portrait art business (£3k–£6k commissions). Analyse replies and suggest follow-ups. Tone: warm but confident, not pushy.`;
-  const prompt = `A prospect replied to our outreach about bespoke screw-portrait artworks.
 
-Lead: ${lead.name}, ${lead.role} at ${lead.company}
-Their reply: "${reply}"
+async function analyseReply(lead, reply, yourLastMessage = "") {
+  const data = await callServer("/api/reply", {
+    lead,
+    theirReply: reply,
+    yourLastMessage,
+  });
 
-1. Classify: WARM (interested, questions, positive) or COLD (not interested, dismissive)
-2. Write 3 follow-up options. Each 2–4 sentences. Different angles.
+  // Convert server format into your existing UI format (classification + replies)
+  const classification = data.temperature || "neutral";
 
-Return ONLY valid JSON (no markdown):
-{
-  "classification": "warm",
-  "reason": "one sentence",
-  "replies": [
-    {"label": "Option A: ...", "text": "..."},
-    {"label": "Option B: ...", "text": "..."},
-    {"label": "Option C: ...", "text": "..."}
-  ]
-}`;
-  const raw = await callClaude([{ role: "user", content: prompt }], system, apiKey);
-  const clean = raw.replace(/```json|```/g, "").trim();
-  return JSON.parse(clean);
+  return {
+    classification: classification === "warm" ? "warm" : "cold",
+    reason: data.intent ? `Intent: ${data.intent}` : "",
+    replies: [
+      { label: "Best reply", text: data.best_reply || "" },
+      { label: "Follow-up (3 days)", text: data.follow_up_if_no_reply_3_days || "" },
+    ].filter(r => r.text),
+  };
 }
+
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
 
