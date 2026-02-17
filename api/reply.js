@@ -8,50 +8,54 @@ export default async function handler(req, res) {
     const { lead, theirReply, yourLastMessage } = req.body || {};
 
     const prompt = `
-You are managing bespoke £3k–£6k screw-built portrait commissions for founders and business owners.
+    You are replying naturally on LinkedIn about bespoke £3k–£6k screw-built portrait commissions.
 
-Positioning rules:
-- Initially you present the pieces as commissioned creations.
-- Introduce the artist only once curiosity or trust is forming, or if asked.
-- Never sound like a salesperson.
+    Tone:
+    Friendly, human, professional — never salesy.
 
-Lead:
-${JSON.stringify(lead || {}, null, 2)}
+    Positioning:
+    You initially present these as commissioned bespoke pieces.
+    Only introduce the artist later if useful or asked.
 
-Your last message:
-${yourLastMessage || ""}
+    Lead:
+    ${JSON.stringify(lead || {}, null, 2)}
 
-Their reply:
-${theirReply || ""}
+    Your last message:
+    ${yourLastMessage || ""}
 
-Tasks:
+    Their reply:
+    ${theirReply || ""}
 
-1) Classify temperature:
-"warm", "neutral", or "cold"
+    Tasks:
 
-2) Identify intent:
-curious, price, examples, timing, not_interested, other
+    1) Classify temperature: warm, neutral, or cold  
+    2) Identify intent: curious, price, examples, timing, not_interested, other  
 
-3) Write the strongest next message to move toward commission.
+    3) Write the best next LinkedIn message.
 
-Rules:
-- Calm, premium tone
-- 60–120 words
-- No pressure
-- Frame price as custom if asked (£3k–£6k)
-- Guide toward showing examples and discussing scale
+    STYLE RULES:
+    - Start with "Hi [FirstName]," or "Hello [FirstName],"
+    - End with "Cheers, Ben" or "Thanks, Ben"
+    - Short, natural paragraphs
+    - No pressure
 
-Also write:
-- A soft 3-day follow-up (30–60 words)
+    CONTENT RULES:
+    - If price asked → explain custom range (£3k–£6k) calmly
+    - If curious → guide toward examples
+    - If hesitant → stay light and friendly
 
-Return JSON only:
-{
-  "temperature": "...",
-  "intent": "...",
-  "best_reply": "...",
-  "follow_up_if_no_reply_3_days": "..."
-}
-`;
+    Also write:
+    - A soft 3-day follow-up message
+
+    Return JSON only:
+    {
+      "temperature": "...",
+      "intent": "...",
+      "best_reply": "...",
+      "follow_up_if_no_reply_3_days": "..."
+    }
+    `;
+
 
 
     const r = await fetch("https://api.openai.com/v1/responses", {

@@ -8,44 +8,50 @@ export default async function handler(req, res) {
     const { lead, context } = req.body || {};
 
     const prompt = `
-You are crafting premium outreach messages for bespoke £3,000–£6,000 screw-built portrait commissions.
+    You are writing natural LinkedIn DMs for bespoke £3,000–£6,000 screw-built portrait commissions.
 
-What is being sold:
-One-off handcrafted portrait pieces built entirely from thousands of individual screws — typically commissioned by founders, CEOs, and business owners to mark milestones, achievements, or personal legacy moments.
+    What is being sold:
+    One-off handcrafted portrait pieces built entirely from thousands of individual screws — often commissioned by founders and business owners to mark milestones or personal legacy moments.
 
-IMPORTANT POSITIONING:
-- Do NOT mention an artist or that you work with anyone.
-- Position it as: “I’ve been creating/commissioning bespoke portrait pieces…”
-- Reveal the artist only later after interest is shown.
-- Tone: sharp, confident, intriguing — never salesy.
+    POSITIONING RULES:
+    - Do NOT mention an artist or that you work with anyone initially
+    - Speak as a real person who commissions/creates these pieces
+    - Keep tone friendly, human, and professional (not salesy)
+    - No hype, no marketing language, no buzzwords
 
-Lead details:
-${JSON.stringify(lead || {}, null, 2)}
+    STYLE RULES (VERY IMPORTANT):
+    - Every message MUST start with: "Hi [FirstName]," or "Hello [FirstName],"
+    - Every message MUST end with either: "Cheers, Ben" or "Thanks, Ben"
+    - Sound like a normal LinkedIn message someone typed themselves
+    - Short paragraphs are fine
 
-Extra context:
-${context || "None"}
+    Lead details:
+    ${JSON.stringify(lead || {}, null, 2)}
 
-Write 3 LinkedIn DM openers:
+    Extra context:
+    ${context || "None"}
 
-Rules:
-- 35–75 words
-- Hook-first (no generic compliments)
-- Curiosity-driven
-- No pricing
-- No hard sell
-- End with a soft question
-- Tailored to founder/owner psychology
-- Sound human and premium
+    Write 3 LinkedIn DM openers.
 
-Return JSON only:
-{
-  "messages": [
-    {"label": "Curiosity", "text": "..."},
-    {"label": "Milestone", "text": "..."},
-    {"label": "Legacy", "text": "..."}
-  ]
-}
-`;
+    Rules:
+    - 40–90 words
+    - Conversational and warm
+    - Curious rather than promotional
+    - No pricing mention
+    - No hard selling
+    - End with a soft question
+    - Tailored to founders / business owners
+
+    Return JSON only:
+    {
+      "messages": [
+        {"label": "Curiosity", "text": "..."},
+        {"label": "Milestone", "text": "..."},
+        {"label": "Legacy", "text": "..."}
+      ]
+    }
+    `;
+
 
     const r = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",

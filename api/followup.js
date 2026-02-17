@@ -9,28 +9,31 @@ export default async function handler(req, res) {
     if (!lead) return res.status(400).json({ error: "Missing lead" });
 
     const prompt = `
-    You are writing a refined follow-up for a founder who hasn’t replied yet.
+    You are writing a polite LinkedIn follow-up to someone who hasn’t replied.
 
     Context:
-    You commission bespoke screw-built portrait pieces for business owners as milestone/legacy works.
+    You commission bespoke screw-built portrait pieces for founders as milestone/legacy artwork.
+
+    Tone:
+    Friendly, calm, human — not salesy.
+
+    STYLE RULES:
+    - Start with "Hi [FirstName]," or "Hello [FirstName],"
+    - End with "Cheers, Ben" or "Thanks, Ben"
+    - Short and natural
+    - No pressure
+    - No price mention
 
     Lead:
     ${JSON.stringify(lead, null, 2)}
 
     Goal:
-    Reignite curiosity without pressure.
-
-    Rules:
-    - 35–70 words
-    - Calm, confident, human
-    - Slight intrigue
-    - No artist mention
-    - No price mention
-    - End with a soft question
+    Gently restart the conversation with curiosity.
 
     Return JSON:
     { "text": "..." }
     `;
+
 
 
     const r = await fetch("https://api.openai.com/v1/responses", {
