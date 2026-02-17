@@ -524,14 +524,23 @@ async function generateOutreachMessage(lead) {
     context: lead?.notes || "",
   });
 
-  // Your server returns { messages: [...] } OR { messages: ["..",".."] }
-  const msgs = data.messages || [];
-  // Normalize into your UI’s expected shape if needed
-  return msgs.map((m, i) =>
-    typeof m === "string"
-      ? { label: `Option ${i + 1}`, text: m }
-      : m
-  );
+  let messages = data.messages;
+
+  // 🛡️ If messages came back as a JSON string, parse it
+  if (typeof messages === "string") {
+    try {
+      const parsed = JSON.parse(messages);
+      messages = parsed.messages || [];
+    } catch {
+      messages = [];
+    }
+  }
+
+  // 🧼 Normalize into clean UI format
+  return (messages || []).map((m, i) => ({
+    label: m.label || `Option ${i + 1}`,
+    text: m.text || String(m),
+  }));
 }
 
 
