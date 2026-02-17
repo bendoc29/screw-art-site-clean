@@ -74,10 +74,39 @@ export default async function handler(req, res) {
       data?.output?.map(o => o?.content?.map(c => c?.text).join("")).join("") ||
       "";
 
+    // Clean markdown wrappers if model added them
+    const cleaned = text
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+
+    // Try to extract JSON safely
     let parsed;
-    try { parsed = JSON.parse(text); } catch { parsed = { messages: [text] }; }
+
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      // If JSON parse fails, attempt to extract messages manually
+      const messageMatches = cleaned.match(/"text"\s*:\s*"([^"]+)"/g);
+
+      if (messageMatches) {
+        parsed = {
+          messages: messageMatches.map((m, i) => ({
+            label: `Option ${i + 1}`,
+            text: m.replace(/"text"\s*:\s*"/, "").replace(/"$/, "")
+          }))
+        };
+      } else {
+        parsed = {
+          messages: [
+            { label: "Option 1", text: cleaned }
+          ]
+        };
+      }
+    }
 
     return res.status(200).json(parsed);
+
   } catch (e) {
     return res.status(500).json({ error: e?.message || "Server error" });
   }
