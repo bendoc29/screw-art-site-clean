@@ -524,24 +524,30 @@ async function generateOutreachMessage(lead) {
     context: lead?.notes || "",
   });
 
-  let messages = data.messages;
+  let raw = data.messages || data;
 
-  // 🛡️ If messages came back as a JSON string, parse it
-  if (typeof messages === "string") {
+  // If OpenAI returned everything as text
+  if (typeof raw === "string") {
     try {
-      const parsed = JSON.parse(messages);
-      messages = parsed.messages || [];
+      const parsed = JSON.parse(raw);
+      raw = parsed.messages || [];
     } catch {
-      messages = [];
+      // fallback: try extracting message-like blocks
+      const matches = raw.match(/"text"\s*:\s*"([^"]+)"/g) || [];
+      return matches.map((m, i) => ({
+        label: `Option ${i + 1}`,
+        text: m.replace(/"text"\s*:\s*"/, "").replace(/"$/, "")
+      }));
     }
   }
 
-  // 🧼 Normalize into clean UI format
-  return (messages || []).map((m, i) => ({
+  // Normalize cleanly
+  return (raw || []).map((m, i) => ({
     label: m.label || `Option ${i + 1}`,
     text: m.text || String(m),
   }));
 }
+
 
 
 async function analyseReply(lead, reply, yourLastMessage = "") {
