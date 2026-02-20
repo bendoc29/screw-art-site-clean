@@ -949,6 +949,20 @@ function LeadDetail({ lead, updateLead, showToast, allLeads, updateAndSave, }) {
     showToast("Message saved");
     setMessages(null);
   };
+
+  const generateExamplesMessage = () => {
+    const first = (lead.name || "").trim().split(" ")[0] || "there";
+    const msg =
+  `Hi ${first},
+
+  Happy to share a couple of examples — do you see this more as a statement piece for your office, something for the business/HQ, or a milestone/legacy marker?
+
+  Cheers, Ben`;
+
+    updateLead(lead.id, { outreachMessage: msg, lastContact: new Date().toISOString() });
+    showToast("Examples message prepared");
+  };
+
   const generateFollowUp = async () => {
     try {
       const r = await fetch("/api/followup", {
@@ -986,6 +1000,23 @@ function LeadDetail({ lead, updateLead, showToast, allLeads, updateAndSave, }) {
     setAnalyseLoading(false);
   };
 
+  const insertOfferStructure = () => {
+    const first = (lead.name || "").trim().split(" ")[0] || "there";
+    const msg =
+  `Hi ${first},
+
+  Most people go one of three ways:
+  1) a Signature Founder Portrait (statement piece for your office)
+  2) a Founder + Brand piece (logo / subtle brand elements for HQ)
+  3) a Milestone / Legacy edition (marking a specific moment)
+
+  Which direction feels closest?
+
+  Cheers, Ben`;
+
+    updateLead(lead.id, { outreachMessage: msg, lastContact: new Date().toISOString() });
+    showToast("Offer structure inserted");
+  };
 
   const handleClose = (outcome) => {
     updateLead(lead.id, { stage: outcome });
@@ -1030,10 +1061,18 @@ function LeadDetail({ lead, updateLead, showToast, allLeads, updateAndSave, }) {
                   🤖 Generate Follow-up
                 </button>
 
+                <button className="btn btn-outline btn-sm" onClick={generateExamplesMessage}>
+                  📎 Ask to Send Examples
+                </button>
+
                 <button className="btn btn-outline btn-sm" onClick={() => snoozeLead(3)}>
                   😴 Snooze 3d
                 </button>
 
+                <button className="btn btn-outline btn-sm" onClick={insertOfferStructure}>
+                  Insert 3 Options
+                </button>
+                
                 <button className="btn btn-outline btn-sm" onClick={() => snoozeLead(7)}>
                   😴 Snooze 7d
                 </button>

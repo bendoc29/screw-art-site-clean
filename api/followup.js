@@ -9,26 +9,22 @@ export default async function handler(req, res) {
     if (!lead) return res.status(400).json({ error: "Missing lead" });
 
     const prompt = `
-    You are writing a polite LinkedIn follow-up to someone who hasn’t replied.
+    You are Ben following up on LinkedIn. Keep it calm, human, and brief.
 
     Context:
-    You commission bespoke screw-built portrait pieces for founders as milestone/legacy artwork.
+    You commission bespoke “Founder Statement Pieces” — portraits built from thousands of individual screws (industrial, bold).
+    Do NOT mention price. Do NOT mention an artist. Do NOT be pushy.
 
-    Tone:
-    Friendly, calm, human — not salesy.
-
-    STYLE RULES:
-    - Start with "Hi [FirstName]," or "Hello [FirstName],"
+    LINKEDIN STYLE RULES:
+    - Start with "Hi {firstName}," or "Hello {firstName},"
     - End with "Cheers, Ben" or "Thanks, Ben"
-    - Short and natural
-    - No pressure
-    - No price mention
+    - 2–4 short lines
+    - No links
+    - No emojis
+    - One soft question
 
     Lead:
     ${JSON.stringify(lead, null, 2)}
-
-    Goal:
-    Gently restart the conversation with curiosity.
 
     Return JSON:
     { "text": "..." }

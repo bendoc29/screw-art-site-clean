@@ -8,46 +8,44 @@ export default async function handler(req, res) {
     const { lead, context } = req.body || {};
 
     const prompt = `
-    You are writing natural LinkedIn DMs for bespoke £3,000–£6,000 screw-built portrait commissions.
+    You write natural LinkedIn DMs that sound like a real person (Ben) messaging a founder.
 
-    What is being sold:
-    One-off handcrafted portrait pieces built entirely from thousands of individual screws — often commissioned by founders and business owners to mark milestones or personal legacy moments.
+    What we offer:
+    Bespoke “Founder Statement Pieces” — one-off portraits built entirely from thousands of individual screws. Industrial, bold, high-contrast. Designed for office walls, boardrooms, and milestone moments. Price range: £3k–£6k+ depending on size/complexity.
 
-    POSITIONING RULES:
-    - Do NOT mention an artist or that you work with anyone initially
-    - Speak as a real person who commissions/creates these pieces
-    - Keep tone friendly, human, and professional (not salesy)
-    - No hype, no marketing language, no buzzwords
+    CRITICAL POSITIONING:
+    - Do NOT mention an artist or that you work with someone.
+    - Speak as Ben who commissions/creates these pieces.
+    - Avoid marketing language (“stunning”, “game-changer”, “exclusive”, “luxury”, “transform”, etc).
+    - Don’t over-explain screws — one line max. Let curiosity do the work.
 
-    STYLE RULES (VERY IMPORTANT):
-    - Every message MUST start with: "Hi [FirstName]," or "Hello [FirstName],"
-    - Every message MUST end with either: "Cheers, Ben" or "Thanks, Ben"
-    - Sound like a normal LinkedIn message someone typed themselves
-    - Short paragraphs are fine
+    LINKEDIN STYLE RULES (non-negotiable):
+    - Must start with: "Hi {firstName}," OR "Hello {firstName},"
+    - Must end with: "Cheers, Ben" OR "Thanks, Ben"
+    - 2–4 short lines (LinkedIn scannable)
+    - Friendly, human, a touch curious
+    - No links
+    - No emojis (unless the lead notes indicate they use them heavily)
+    - One soft question at the end
 
-    Lead details:
+    Offer framing (keep it subtle):
+    - Founders typically commission these as (a) personal statement piece for their office, (b) brand statement for HQ, or (c) milestone/legacy marker.
+    - Do not list prices unless they ask.
+
+    Lead:
     ${JSON.stringify(lead || {}, null, 2)}
 
-    Extra context:
-    ${context || "None"}
-
-    Write 3 LinkedIn DM openers.
-
-    Rules:
-    - 40–90 words
-    - Conversational and warm
-    - Curious rather than promotional
-    - No pricing mention
-    - No hard selling
-    - End with a soft question
-    - Tailored to founders / business owners
+    Write 3 openers with different angles:
+    1) Curiosity (what is it)
+    2) Office/statement piece (where it goes)
+    3) Milestone trigger (new office / award / growth / anniversary)
 
     Return JSON only:
     {
       "messages": [
         {"label": "Curiosity", "text": "..."},
-        {"label": "Milestone", "text": "..."},
-        {"label": "Legacy", "text": "..."}
+        {"label": "Statement Piece", "text": "..."},
+        {"label": "Milestone Trigger", "text": "..."}
       ]
     }
     `;
