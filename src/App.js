@@ -463,12 +463,6 @@ function dedupeLeads(leads) {
   return out;
 }
 
-function daysSince(dateLike) {
-  if (!dateLike) return Infinity;
-  const t = new Date(dateLike).getTime();
-  if (Number.isNaN(t)) return Infinity;
-  return (Date.now() - t) / (1000 * 60 * 60 * 24);
-}
 
 function followUpPriorityScore(lead) {
   // Higher = more urgent
@@ -480,6 +474,45 @@ function followUpPriorityScore(lead) {
 
   // The longer it’s been, the more urgent
   return warmBoost + Math.floor(d);
+}
+
+const FOLLOWUP_AFTER_DAYS = 3;
+
+function msToHuman(ms) {
+  if (ms <= 0) return "Due now";
+  const totalMins = Math.ceil(ms / (60 * 1000));
+  const hrs = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  if (hrs >= 24) {
+    const days = Math.floor(hrs / 24);
+    const remH = hrs % 24;
+    return `Due in ${days}d ${remH}h`;
+  }
+  return `Due in ${hrs}h ${mins}m`;
+}
+
+function daysSince(dateLike, now = Date.now()) {
+  if (!dateLike) return null;
+  const t = new Date(dateLike).getTime();
+  if (Number.isNaN(t)) return null;
+  return Math.floor((now - t) / (1000 * 60 * 60 * 24));
+}
+
+function followupCountdown(lead, now = Date.now()) {
+  // If snoozed, show snooze countdown instead
+  if (lead.snoozeUntil) {
+    const snoozeMs = new Date(lead.snoozeUntil).getTime() - now;
+    if (snoozeMs > 0) return { label: `Snoozed: ${msToHuman(snoozeMs)}`, due: false };
+  }
+
+  const base = lead.lastContact || lead.addedAt;
+  const baseT = new Date(base).getTime();
+  if (Number.isNaN(baseT)) return { label: "", due: false };
+
+  const dueAt = baseT + FOLLOWUP_AFTER_DAYS * 24 * 60 * 60 * 1000;
+  const msLeft = dueAt - now;
+
+  return { label: msToHuman(msLeft), due: msLeft <= 0 };
 }
 
 function needsFollowUp(lead) {
@@ -600,6 +633,12 @@ export default function App() {
   const importCSV = useCallback((file) => {
   if (!file) return;
 
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60 * 1000); // update every minute
+    return () => clearInterval(id);
+  }, []);
   const reader = new FileReader();
   reader.onload = () => {
     const text = String(reader.result || "");
@@ -725,10 +764,12 @@ export default function App() {
               platformFilter={platformFilter} setPlatformFilter={setPlatformFilter}
               updateLead={updateLead} updateAndSave={updateAndSave}
               showToast={showToast} setShowAddModal={setShowAddModal}
+              now={now}   // ✅ add this
             />
           )}
+
+          {tab === "analytics" && <AnalyticsTab leads={leads} now={now} />} 
           {tab === "finder" && <FinderTab showToast={showToast} />}
-          {tab === "analytics" && <AnalyticsTab leads={leads} />}
         </div>
 
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
@@ -750,7 +791,7 @@ export default function App() {
 
 // ─── PIPELINE TAB ─────────────────────────────────────────────────────────────
 
-function PipelineTab({ leads, allLeads, followUpsDue, selectedId, setSelectedId, selectedLead, stageFilter, setStageFilter, platformFilter, setPlatformFilter, updateLead, updateAndSave, showToast, setShowAddModal }) {
+function PipelineTab({ leads, allLeads, followUpsDue, selectedId, setSelectedId, selectedLead, stageFilter, setStageFilter, platformFilter, setPlatformFilter, updateLead, updateAndSave, showToast, setShowAddModal, now }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 20 }}>
       <div>
@@ -824,6 +865,7 @@ function PipelineTab({ leads, allLeads, followUpsDue, selectedId, setSelectedId,
                   onClick={() => setSelectedId(lead.id === selectedId ? null : lead.id)}
                   updateLead={updateLead}
                   showToast={showToast}
+                  now={now}
                 />
               ))}
               {followUpsDue.length > 8 ? (
@@ -840,7 +882,7 @@ function PipelineTab({ leads, allLeads, followUpsDue, selectedId, setSelectedId,
         ) : leads.map(lead => (
           <LeadCard key={lead.id} lead={lead} selected={selectedId===lead.id}
             onClick={() => setSelectedId(lead.id===selectedId ? null : lead.id)}
-            updateLead={updateLead} showToast={showToast} />
+            updateLead={updateLead} showToast={showToast} now={now} />
         ))}
       </div>
       <div>
@@ -862,7 +904,7 @@ function PipelineTab({ leads, allLeads, followUpsDue, selectedId, setSelectedId,
 
 // ─── LEAD CARD ────────────────────────────────────────────────────────────────
 
-function LeadCard({ lead, selected, onClick, updateLead, showToast }) {
+function LeadCard({ lead, selected, onClick, updateLead, showToast, now }) {
   const stageColor = STAGE_COLORS[lead.stage] || "#5a5450";
   const steps = lead.steps || {};
 
@@ -885,6 +927,27 @@ function LeadCard({ lead, selected, onClick, updateLead, showToast }) {
         <div>
           <div className="lead-name">{lead.name}</div>
           <div className="lead-role">{lead.role} · {lead.company}</div>
+         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+          {(() => {
+            const d = daysSince(lead.lastContact || lead.addedAt, now);
+            return d !== null ? (
+              <span style={{ fontSize: 10, color: "var(--text3)" }}>Last: {d}d</span>
+            ) : null;
+          })()}
+
+          {(() => {
+            const c = followupCountdown(lead, now);
+            const eligible =
+              ["messaged", "warm", "cold", "replied"].includes(lead.stage) &&
+              !["won", "lost"].includes(lead.stage);
+
+            return eligible ? (
+              <span style={{ fontSize: 10, color: c.due ? "var(--warm)" : "var(--text3)" }}>
+                {c.label}
+              </span>
+            ) : null;
+          })()}
+          </div>
         </div>
         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
           <StageBadge stage={lead.stage} />
