@@ -615,6 +615,12 @@ export default function App() {
   const [platformFilter, setPlatformFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
   
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const updateAndSave = useCallback((updated) => {
     setLeads(updated);
@@ -632,13 +638,6 @@ export default function App() {
   const showToast = (msg) => setToast(msg);
   const importCSV = useCallback((file) => {
   if (!file) return;
-
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60 * 1000); // update every minute
-    return () => clearInterval(id);
-  }, []);
 
   const reader = new FileReader();
   reader.onload = () => {
