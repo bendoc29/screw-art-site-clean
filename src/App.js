@@ -964,22 +964,37 @@ function LeadDetail({ lead, updateLead, showToast, allLeads, updateAndSave, }) {
   };
 
   const generateFollowUp = async () => {
-    try {
-      const r = await fetch("/api/followup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lead }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data?.error || "Failed to generate follow-up");
+  try {
+    const r = await fetch("/api/followup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead }),
+    });
 
-      // Save as outreachMessage so it’s ready to copy/paste
-      updateLead(lead.id, { outreachMessage: data.text || "" });
-      showToast("Follow-up generated");
-    } catch (e) {
-      showToast(`AI error: ${e.message}`);
-    }
-  };
+    const data = await r.json();
+    if (!r.ok) throw new Error(data?.error || "Failed to generate follow-up");
+
+    // Save follow-up as outreachMessage
+    updateLead(lead.id, {
+      outreachMessage: data.text || "",
+      lastContact: new Date().toISOString(), // 🔥 THIS FIXES IT
+      stage: "messaged"
+    });
+
+    showToast("Follow-up generated & marked as sent");
+  } catch (e) {
+    showToast(`AI error: ${e.message}`);
+  }
+};
+
+const markFollowUpSent = () => {
+  updateLead(lead.id, {
+    lastContact: new Date().toISOString(),
+    stage: "messaged"
+  });
+
+  showToast("Follow-up marked as sent");
+};
 
   const snoozeLead = (days) => {
     const until = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
@@ -1072,7 +1087,11 @@ function LeadDetail({ lead, updateLead, showToast, allLeads, updateAndSave, }) {
                 <button className="btn btn-outline btn-sm" onClick={insertOfferStructure}>
                   Insert 3 Options
                 </button>
-                
+
+                <button className="btn btn-outline btn-sm" onClick={markFollowUpSent}>
+                  ✓ Mark Follow-up Sent
+                </button>
+
                 <button className="btn btn-outline btn-sm" onClick={() => snoozeLead(7)}>
                   😴 Snooze 7d
                 </button>
