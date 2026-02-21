@@ -639,6 +639,7 @@ export default function App() {
     const id = setInterval(() => setNow(Date.now()), 60 * 1000); // update every minute
     return () => clearInterval(id);
   }, []);
+
   const reader = new FileReader();
   reader.onload = () => {
     const text = String(reader.result || "");
@@ -791,7 +792,7 @@ export default function App() {
 
 // ─── PIPELINE TAB ─────────────────────────────────────────────────────────────
 
-function PipelineTab({ leads, allLeads, followUpsDue, selectedId, setSelectedId, selectedLead, stageFilter, setStageFilter, platformFilter, setPlatformFilter, updateLead, updateAndSave, showToast, setShowAddModal, now }) {
+function PipelineTab({ leads, allLeads, followUpsDue, selectedId, setSelectedId, selectedLead, stageFilter, setStageFilter, platformFilter, setPlatformFilter, updateLead, updateAndSave, showToast, setShowAddModal, now, importCSV }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 20 }}>
       <div>
