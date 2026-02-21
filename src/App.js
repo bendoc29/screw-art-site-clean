@@ -765,7 +765,7 @@ export default function App() {
               platformFilter={platformFilter} setPlatformFilter={setPlatformFilter}
               updateLead={updateLead} updateAndSave={updateAndSave}
               showToast={showToast} setShowAddModal={setShowAddModal}
-              now={now}   // ✅ add this
+              now={now}   
             />
           )}
 
